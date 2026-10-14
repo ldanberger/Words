@@ -1,11 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}[hidden]{display:none!important}</style>
-</head>
-<body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Words</title>
 <style>
 /* Layout: one-column phone page — title + score, two toggles, theme/length pickers, the letter tiles, clue bar, then the word list. */
@@ -92,6 +85,7 @@ button:focus-visible,select:focus-visible{outline:3px solid var(--flash);outline
 .clue.win{color:var(--good);font-weight:700}
 .actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .btn{font:700 .9rem var(--body);color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:999px;padding:8px 16px;cursor:pointer;touch-action:manipulation}
+.btn:disabled{opacity:.4;cursor:default}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 
 .listhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -137,6 +131,24 @@ button:focus-visible,select:focus-visible{outline:3px solid var(--flash);outline
 .credit{color:var(--muted);font-size:.75rem;text-align:center;margin:8px 0 0;line-height:1.4}
 .credit a{color:inherit}
 .hiddenNote{color:var(--muted);text-align:center;font-size:.9rem;margin:0}
+.kb{display:flex;flex-direction:column;gap:8px;border-top:1px dashed var(--line);padding-top:10px}
+.kbdraft{display:flex;gap:4px;justify-content:center;flex-wrap:wrap}
+.kbdraft span{width:26px;height:32px;display:grid;place-items:center;border-radius:6px;border:1.5px solid var(--line);background:var(--tile);font:700 1rem var(--mono);color:var(--ink);box-sizing:border-box}
+.kbdraft span.lk{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.kbdraft span.cur{border-color:var(--flash);border-width:2.5px}
+.kbdraft span{cursor:pointer}
+.kbdraft span.lk{cursor:default}
+.kbnote{text-align:center;font-size:.8rem;color:var(--muted);min-height:1.1em}
+.kbrow{display:flex;gap:4px;justify-content:center}
+.key{flex:1 1 0;max-width:40px;min-width:0;height:44px;border:1px solid var(--line);border-bottom-width:3px;border-radius:7px;background:var(--tile);color:var(--ink);font:700 1rem var(--mono);padding:0;cursor:pointer;touch-action:manipulation}
+.key:active{background:var(--line)}
+.key.wide{max-width:72px;flex:1.6 1 0;font:700 .78rem var(--body)}
+.key.go{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.key:disabled{opacity:.45;cursor:default}
+.ptr{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:30;display:flex;align-items:center;gap:8px;background:var(--surface);color:var(--accent);border:1px solid var(--line);font:700 .85rem var(--body);padding:8px 14px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.15);transform:translate(-50%,-80px);opacity:0;pointer-events:none}
+.ptr .arrow{display:inline-block;transition:transform .15s}
+.ptr.ready .arrow{transform:rotate(180deg)}
+.ptr.go .arrow{animation:spin .8s linear infinite}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,800&family=JetBrains+Mono:wght@700&display=swap">
@@ -148,6 +160,7 @@ button:focus-visible,select:focus-visible{outline:3px solid var(--flash);outline
     <div class="score" id="score"><small>Solved</small><b id="count">0</b></div>
   </header>
 
+  <div class="ptr" id="ptr" aria-hidden="true"><span class="arrow">↓</span><span id="ptrText">Pull to refresh</span></div>
   <div class="working" id="working" hidden role="status" aria-live="polite"><div class="pill"><span class="spin"></span>Updating list…</div></div>
   <p class="nojs" id="nojs">Loading words… If this message stays, the page isn't running: Words needs JavaScript. File previews (in the Claude app, Files, or GitHub) don't run it. Open this page in Safari or Chrome, for example from GitHub Pages.</p>
 
@@ -175,9 +188,19 @@ button:focus-visible,select:focus-visible{outline:3px solid var(--flash);outline
       <span class="scramlabel">Scrambled <span id="scramWhich">(1st)</span></span>
       <div class="scramletters" id="scramLetters"></div>
       <button class="btn mini" id="reshuffle" aria-label="Shuffle again">Shuffle</button>
-    </div>    <div class="clue" id="clue"></div>
+    </div>
+    <div class="kb" id="kb" hidden>
+      <div class="kbdraft" id="kbDraft" aria-live="polite"></div>
+      <div class="kbnote" id="kbNote"></div>
+      <div id="kbKeys"></div>
+    </div>
+    <div class="clue" id="clue"></div>
     <div class="actions">
+      <button class="btn lock" id="smartBtn" aria-pressed="true">Smart</button>
       <button class="btn lock" id="lockBtn" aria-pressed="false">Lock letters</button>
+      <button class="btn lock" id="kbBtn" aria-pressed="false">Keyboard</button>
+      <button class="btn" id="unscrBtn">Unscramble</button>
+      <button class="btn" id="undoBtn">Undo</button>
       <button class="btn" id="clearBtn">Clear</button>
       <button class="btn primary" id="checkBtn" hidden>Check</button>
       <button class="btn" id="revealBtn" hidden>Reveal word</button>
@@ -205,7 +228,7 @@ button:focus-visible,select:focus-visible{outline:3px solid var(--flash);outline
       <div class="helpbody">
         <h3>The basics</h3>
         <p>Pick a <b>Theme</b> and a number of <b>Squares</b>. Each square is a letter of the word. Tap a square to choose a letter. Only letters that can still make a real word are offered.</p>
-        <p>The number in brackets next to Squares is how many words still fit. <b>Any length</b> shows 15 squares and matches words of every length.</p>
+        <p>The number in brackets next to Squares is how many words still fit. <b>Any length</b> shows 15 squares and matches words of every length. Changing the number of squares keeps your letters and locks in the squares that remain.</p>
 
         <h3>Toggles</h3>
         <dl>
@@ -218,7 +241,11 @@ button:focus-visible,select:focus-visible{outline:3px solid var(--flash);outline
 
         <h3>Buttons</h3>
         <dl>
-          <dt>Lock letters</dt><dd>Fixes the letters you have picked (shown in teal). The other squares then offer all 26 letters. A letter that no word allows turns red. Tap <b>Unlock</b> to undo.</dd>
+          <dt>Smart</dt><dd>On: each square offers only letters that still make a word (for a tapped clue, its word). Off: every square offers all 26 letters, and a letter no word allows turns red.</dd>
+          <dt>Lock letters</dt><dd>Fixes the letters you have picked (shown in teal). With Smart on, the other squares offer only letters used by the words that still fit. With Smart off they offer all 26, and a letter that no word allows turns red. Tap <b>Unlock</b> to undo.</dd>
+          <dt>Unscramble</dt><dd>Rearranges the letters in the unlocked squares into a word from the list, keeping locked letters in place. Turn Smart off to type scrambled letters freely. It only uses exactly your letters, never dropping or adding any. If no word fits, the squares stay as they are.</dd>
+          <dt>Keyboard</dt><dd>Opens a simple keyboard under the squares. Type the whole word, then tap <b>Enter</b> to fill every square in one go. Locked squares are skipped. <b>◀</b> and <b>▶</b> move the cursor without erasing (or tap a square in the preview). <b>⌫</b> erases the letter before the cursor, <b>Skip</b> leaves a square blank, <b>Clear</b> starts over. After Enter or Undo the keyboard keeps showing what is in the squares, so you can keep editing. <b>Copy</b> loads the letters already in the squares so you can edit them, and copies them to the clipboard. With Smart on, only letters that can still make a word at the cursor's square can be tapped; the rest are greyed out. With Smart off any letter can be typed, and one no word allows turns red. A computer keyboard works too while it is open.</dd>
+          <dt>Undo</dt><dd>Clears the last letter you placed (locked squares stay). After a solve or a reveal it also takes that back, and the Solved count goes down by one, so you can change letters and try for a different word.</dd>
           <dt>Clear</dt><dd>Empties every square that isn't locked.</dd>
           <dt>Solving</dt><dd>Spell any word from the current list, starting at the first square, and it counts as solved, with the list shown or hidden. If you tapped a single clue, you must find that exact word.</dd>
           <dt>Reveal word</dt><dd>Shows the mystery word. It doesn't count as solved.</dd>
@@ -231,6 +258,9 @@ button:focus-visible,select:focus-visible{outline:3px solid var(--flash);outline
         <h3>Themes</h3>
         <p>Sixteen themes come from Pocket Crossword. <b>Other (dictionary)</b> adds about 40,000 everyday words from 1 to 45 letters. <b>All themes</b> combines everything. Long lists show the first 300 results. Pick letters to narrow them.</p>
 
+        <h3>Refresh</h3>
+        <p>When Words is opened from your home screen, drag down from the top of the page and let go to reload it (for example after a new version is published). Your settings and Solved count are kept. Letters you have picked are cleared.</p>
+
         <p class="helpnote">Your theme, length, toggles, pattern and Solved count are remembered on this device. <span id="helpVer"></span></p>
       </div>
     </div>
@@ -240,7 +270,7 @@ button:focus-visible,select:focus-visible{outline:3px solid var(--flash);outline
 </div>
 
 <script>
-const VERSION = "1.12";   // bump by .01 for each change
+const VERSION = "1.22";   // bump by .01 for each change
 document.getElementById("nojs").hidden = true;
 document.getElementById("ver").textContent = "v" + VERSION;
 document.getElementById("helpVer").textContent = "Words v" + VERSION + ".";
@@ -271,8 +301,12 @@ let state = {
   adv: store.get("adv", false),
   scram: store.get("scram", false),
   pattern: store.get("pattern", Array(12).fill("")),
-  count: store.get("count", 0)
+  count: store.get("count", 0),
+  smart: store.get("smart", true),
+  kb: store.get("kb", false)
 };
+let kbBuf = [];   // keyboard draft, one entry per open square ("" = blank), applied with Enter
+let kbCur = 0;    // draft cursor
 let letters = [];      // current picks ("" = blank)
 let target = null;     // mystery word when list hidden
 let pool = [];         // words of current theme + length
@@ -494,8 +528,9 @@ function renderNow() {
     if (!letters[i]) { for (const o of fullMatch) if (o.w.length > i) ok.add(o.w[i]); }
     else for (const o of pool) if (o.w.length > i && letters.every((L, j) => j === i || !L || o.w[j] === L)) ok.add(o.w[i]);
     const isLocked = locked.has(i);
-    const free = lockOn && !isLocked && !revealed.has(i);
-    const bad = free && letters[i] && !ok.has(letters[i]);
+    // Smart decides the choices: on = only letters the filtered words use here (even with Lock on); off = all 26
+    const free = !state.smart && !isLocked && !revealed.has(i);
+    const bad = (free || state.kb) && !isLocked && !revealed.has(i) && letters[i] && !ok.has(letters[i]);
     t.classList.toggle("bad", !!bad);
     t.classList.toggle("locked", isLocked);
     t.disabled = revealed.has(i) || isLocked || !!doneMsg;
@@ -513,8 +548,7 @@ function renderNow() {
   });
 
   const nm = fullMatch.length;
-  const opt = [...$("len").options].find(o => o.value === String(state.len));
-  if (opt) opt.textContent = state.len === "any" ? `Any length (${nm})` : `${state.len} letters (${nm})`;
+  updateLengthCounts(nm);
   $("listSec").hidden = !state.show;
   $("hiddenNote").hidden = state.show;
   $("newBtn").hidden = state.show && !doneMsg;
@@ -556,6 +590,8 @@ function renderNow() {
   $("allWords").hidden = !picked || !!doneMsg;
   $("searchSec").hidden = !state.clue;
   renderScram();
+  renderKb();
+  $("undoBtn").disabled = !doneMsg && lastFilled() < 0;
 
   // clue list: words of this length that fit the locked letters
   const showClues = state.clue && !state.show;
@@ -612,6 +648,35 @@ function typedWord() {
   return pool.find(o => o.w === w) || null;
 }
 
+// Unscramble: rearrange the letters in the unlocked squares into a word from the list.
+// Exact anagram first (the mystery word wins a tie), otherwise the word that uses the most of them.
+function unscramble() {
+  const freeIdx = letters.map((L, i) => i).filter(i => !locked.has(i));
+  const mine = freeIdx.map(i => letters[i]).filter(Boolean);
+  if (!mine.length) { skipNote = "Pick some letters to unscramble"; render(); return; }
+  const want = {}; for (const ch of mine) want[ch] = (want[ch] || 0) + 1;
+  let best = null, bestScore = -1, bestExtra = 0;
+  for (const o of pool) {
+    if (!o.fits) continue;
+    if (![...locked].every(i => o.w[i] === letters[i])) continue;
+    const have = Object.assign({}, want); let used = 0, slots = 0;
+    for (let i = 0; i < o.w.length; i++) {
+      if (locked.has(i)) continue;
+      slots++;
+      const ch = o.w[i];
+      if (have[ch] > 0) { have[ch]--; used++; }
+    }
+    const extra = slots - used;
+    const exact = used === mine.length && extra === 0;
+    const score = exact ? 1e6 + (target && o === target ? 1 : 0) : used * 1000 - extra;
+    if (score > bestScore) { best = o; bestScore = score; bestExtra = extra; }
+  }
+  // only an exact anagram: every letter used, none added; otherwise leave the squares as they are
+  if (!best || bestScore < 1e6) { skipNote = "No word uses exactly those letters"; render(); return; }
+  letters = letters.map((L, i) => locked.has(i) ? L : (best.w[i] || ""));
+  update();
+}
+
 function update() {
   render();
   if (busy) return;
@@ -629,13 +694,38 @@ function win(gaveUp) {
     $("count").textContent = state.count;
     const sc = $("score"); sc.classList.remove("bump"); void sc.offsetWidth; sc.classList.add("bump");
     $("tiles").classList.add("win");
-    doneMsg = { cls: "clue win", text: `Correct! ${target.w}` };
+    doneMsg = { cls: "clue win", text: `Correct! ${target.w}`, solved: true };
   } else {
     doneMsg = { cls: "clue", text: `Revealed: ${target.w}` };
   }
-  // narrow the clue list to the answer's clue
+  // narrow the clue list to the answer's clue (remember the old choice so Undo can go back)
+  prevPicked = picked;
   picked = target; newPool();
   render();   // stays here until the user taps Next word
+}
+
+// Undo: take back the last letter. After a solve or reveal it also undoes that, so other words can be tried.
+let prevPicked = null;
+function lastFilled() {
+  for (let i = letters.length - 1; i >= 0; i--) if (letters[i] && !locked.has(i) && !revealed.has(i)) return i;
+  return -1;
+}
+function undo() {
+  if (doneMsg) {
+    if (doneMsg.solved) {
+      state.count = Math.max(0, state.count - 1); store.set("count", state.count);
+      $("count").textContent = state.count;
+    }
+    busy = false; doneMsg = null;
+    $("tiles").classList.remove("win");
+    revealed = new Set();
+    picked = prevPicked; prevPicked = null; newPool();
+    if (!target || !pool.includes(target)) pickTarget();
+  }
+  const i = lastFilled();
+  if (i >= 0) { letters = letters.slice(); letters[i] = ""; }
+  kbSync(i);
+  render();
 }
 
 function restart() {
@@ -654,9 +744,159 @@ function fullReset() {
   newPool(); buildTiles(); setLock(false); pickTarget(); render();
 }
 
+// Squares dropdown: every option counts the words of that length that still fit the
+// picked/locked letters (and the pattern and clue search), as they would after switching to it.
+function updateLengthCounts(nm) {
+  const re = patternRe();
+  const terms = state.clue ? searchText.toLowerCase().split(/\s+/).filter(Boolean) : [];
+  const picks = letters.map((L, i) => [i, L]).filter(p => p[1]);
+  const per = {}; let any = 0;
+  for (const o of WORDS[state.theme]) {
+    const w = o.w, n = w.length;
+    if (re && !re.test(w)) continue;
+    if (terms.length) { const c = o.c.toLowerCase(); if (!terms.every(t => c.includes(t))) continue; }
+    let ok = true, beyond = false;
+    for (const [i, L] of picks) {
+      if (i >= n) { beyond = true; continue; }   // squares past the end are dropped when switching to this length
+      if (w[i] !== L) { ok = false; break; }
+    }
+    if (!ok) continue;
+    per[n] = (per[n] || 0) + 1;
+    if (!beyond) any++;
+  }
+  for (const opt of $("len").options) {
+    const v = opt.value;
+    const c = v === String(state.len) ? nm : v === "any" ? any : (per[v] || 0);
+    opt.textContent = v === "any" ? `Any length (${c})` : `${v} letters (${c})`;
+  }
+}
+
+// ---- on-screen keyboard: type the whole word, Enter fills all unlocked squares at once ----
+function kbSlots() { return letters.map((_, i) => i).filter(i => !locked.has(i) && !revealed.has(i)); }
+function buildKb() {
+  const box = $("kbKeys"); box.innerHTML = "";
+  const rows = ["QWERTYUIOP", "ASDFGHJKL", "<ZXCVBNM>", "[_c#!]"];
+  for (const r of rows) {
+    const row = document.createElement("div"); row.className = "kbrow";
+    for (const ch of r) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "key";
+      if (ch === "<") { b.textContent = "⌫"; b.classList.add("wide"); b.dataset.k = "back"; b.setAttribute("aria-label", "Delete"); }
+      else if (ch === ">") { b.textContent = "Enter"; b.classList.add("wide", "go"); b.dataset.k = "enter"; }
+      else if (ch === "_") { b.textContent = "Skip"; b.classList.add("wide"); b.dataset.k = "skip"; b.setAttribute("aria-label", "Leave a square blank"); }
+      else if (ch === "#") { b.textContent = "Clear"; b.classList.add("wide"); b.dataset.k = "clear"; }
+      else if (ch === "[") { b.textContent = "◀"; b.classList.add("wide"); b.dataset.k = "left"; b.setAttribute("aria-label", "Move cursor back"); }
+      else if (ch === "]") { b.textContent = "▶"; b.classList.add("wide"); b.dataset.k = "right"; b.setAttribute("aria-label", "Move cursor forward"); }
+      else if (ch === "c") { b.textContent = "Copy"; b.classList.add("wide"); b.dataset.k = "copy"; b.setAttribute("aria-label", "Copy the squares into the keyboard"); }
+      else if (ch === "!") { b.textContent = "Close"; b.classList.add("wide"); b.dataset.k = "close"; }
+      else { b.textContent = ch; b.dataset.k = ch; }
+      row.appendChild(b);
+    }
+    box.appendChild(row);
+  }
+  box.addEventListener("click", e => { const b = e.target.closest(".key"); if (b) kbKey(b.dataset.k); });
+  // tap a draft square to put the cursor there
+  $("kbDraft").addEventListener("click", e => { const sp = e.target.closest("span[data-n]"); if (sp && !busy && !doneMsg) { kbCur = +sp.dataset.n; renderKb(); } });
+}
+function kbFit() {
+  const n = kbSlots().length;
+  while (kbBuf.length < n) kbBuf.push("");
+  kbBuf.length = n;
+  kbCur = Math.max(0, Math.min(kbCur, n));
+}
+function kbKey(k) {
+  if (k === "close") { setKb(false); return; }
+  if (busy || doneMsg) return;
+  kbFit();
+  const n = kbBuf.length;
+  if (k === "back") { if (kbCur > 0) { kbCur--; kbBuf[kbCur] = ""; } }       // delete the letter before the cursor
+  else if (k === "left") kbCur = Math.max(0, kbCur - 1);                      // move without clearing
+  else if (k === "right") kbCur = Math.min(n, kbCur + 1);
+  else if (k === "clear") { kbBuf = kbBuf.map(() => ""); kbCur = 0; }
+  else if (k === "copy") {
+    // load the letters now in the squares into the draft, cursor after the last one
+    const slots = kbSlots();
+    kbBuf = slots.map(i => letters[i] || "");
+    let last = -1; kbBuf.forEach((L, j) => { if (L) last = j; });
+    kbCur = Math.min(n, last + 1);
+    const word = letters.map(L => L || "?").join("").replace(/\?+$/, "");
+    if (word) try { navigator.clipboard && navigator.clipboard.writeText(word).catch(() => {}); } catch {}
+    kbMsg = word ? "Copied " + word : "The squares are empty";
+  }
+  else if (k === "enter") { kbApply(); return; }
+  else if (kbCur < n) { kbBuf[kbCur] = k === "skip" ? "" : k; kbCur++; }
+  renderKb();
+}
+let kbMsg = "";
+const kbApply = act(() => {
+  const slots = kbSlots();
+  if (!kbBuf.some(Boolean) && !kbCur) return;
+  letters = letters.slice();
+  slots.forEach((i, n) => { letters[i] = kbBuf[n] || ""; });
+  update();
+});
+function renderKb() {
+  $("kb").hidden = !state.kb;
+  setToggle($("kbBtn"), state.kb);
+  if (!state.kb) return;
+  const slots = kbSlots();
+  kbFit();
+  const box = $("kbDraft"); box.innerHTML = "";
+  let n = 0;
+  letters.forEach((L, i) => {
+    const s = document.createElement("span");
+    if (!slots.includes(i)) { s.textContent = L; s.className = "lk"; }
+    else { if (n === kbCur) s.className = "cur"; s.textContent = kbBuf[n] || ""; s.dataset.n = n; n++; }
+    box.appendChild(s);
+  });
+  const off = busy || !!doneMsg;
+  // Smart: only letters that some filtered word has at the cursor's square, given the locked
+  // squares and the other letters in the draft (that is the word Enter would make)
+  let valid = null;
+  if (state.smart && !off) {
+    valid = new Set();
+    if (kbCur < slots.length) {
+      const pos = slots[kbCur];
+      const need = [];
+      letters.forEach((L, i) => { if (L && !slots.includes(i)) need.push([i, L]); });
+      kbBuf.forEach((L, j) => { if (L && j !== kbCur) need.push([slots[j], L]); });
+      for (const o of pool) if (o.w.length > pos && need.every(([i, L]) => o.w[i] === L)) valid.add(o.w[pos]);
+    }
+  }
+  $("kbNote").textContent = off ? "Tap Next word to keep going" : kbMsg ? kbMsg
+    : valid && !valid.size && kbCur < slots.length ? "No word fits here. Use ⌫, ◀ or Clear"
+    : kbBuf.some(Boolean) ? "Tap Enter to fill the squares" : "Type the word, then tap Enter";
+  kbMsg = "";
+  for (const b of $("kbKeys").querySelectorAll(".key")) {
+    const k = b.dataset.k;
+    b.disabled = off ? k !== "close" : !!valid && k.length === 1 && !valid.has(k);
+  }
+}
+// make the draft match the squares; cursor goes to square `at`, or just after the last letter
+function kbSync(at) {
+  const slots = kbSlots();
+  kbBuf = slots.map(i => letters[i] || "");
+  const j = at >= 0 ? slots.indexOf(at) : -1;
+  if (j >= 0) kbCur = j;
+  else { let last = -1; kbBuf.forEach((L, k) => { if (L) last = k; }); kbCur = last + 1; }
+}
+function setKb(on) { state.kb = on; store.set("kb", on); kbBuf = []; kbCur = 0; renderKb(); }
+
 // ---- events ----
 $("theme").addEventListener("change", e => act(() => { state.theme = e.target.value; store.set("theme", state.theme); fillLengths(); store.set("len", state.len); fullReset(); }, true)());
-$("len").addEventListener("change", e => act(() => { state.len = e.target.value === "any" ? "any" : +e.target.value; store.set("len", state.len); fullReset(); }, true)());
+$("len").addEventListener("change", e => act(() => {
+  // keep the letters and locks of squares that still exist after the change
+  const oldLetters = letters.slice(), oldLocked = new Set(locked), wasOn = lockOn;
+  state.len = e.target.value === "any" ? "any" : +e.target.value; store.set("len", state.len);
+  fullReset();
+  const n = letters.length;
+  if (wasOn) {
+    letters = letters.map((L, i) => i < oldLetters.length && oldLocked.has(i) ? oldLetters[i] : "");
+    if (letters.some(Boolean)) setLock(true);
+  }
+  letters = letters.map((L, i) => L || (i < oldLetters.length ? oldLetters[i] || "" : ""));
+  letters.length = n;
+  update();
+}, true)());
 $("showBtn").addEventListener("click", act(() => {
   state.show = !state.show; store.set("show", state.show); setToggle($("showBtn"), state.show);
   if (!state.show) restart(); else render();
@@ -691,7 +931,23 @@ $("reshuffle").onclick = () => { scramWord = ""; renderScram(); };
 $("helpBtn").onclick = () => { $("help").hidden = false; $("helpClose").focus(); };
 $("helpClose").onclick = () => { $("help").hidden = true; $("helpBtn").focus(); };
 $("help").addEventListener("click", e => { if (e.target.id === "help") $("helpClose").click(); });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("help").hidden) $("helpClose").click(); });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !$("help").hidden) { $("helpClose").click(); return; }
+  // physical keyboard drives the on-screen one while it is open
+  if (!state.kb || !$("help").hidden || e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = e.target; if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
+  if (/^[a-z]$/i.test(e.key)) {
+    const kb = $("kbKeys").querySelector(`.key[data-k="${e.key.toUpperCase()}"]`);
+    if (!kb || !kb.disabled) kbKey(e.key.toUpperCase());
+    e.preventDefault();
+  }
+  else if (e.key === "Backspace") { kbKey("back"); e.preventDefault(); }
+  else if (e.key === "Enter") { kbKey("enter"); e.preventDefault(); }
+  else if (e.key === " ") { kbKey("skip"); e.preventDefault(); }
+  else if (e.key === "ArrowLeft") { kbKey("left"); e.preventDefault(); }
+  else if (e.key === "ArrowRight") { kbKey("right"); e.preventDefault(); }
+});
+$("kbBtn").onclick = () => setKb(!state.kb);
 $("allClues").onclick = $("allWords").onclick = act(() => { if (picked) pickWord(picked); });
 $("advClear").addEventListener("click", act(() => { state.pattern = Array(12).fill(""); patternChanged(); }));
 $("clueBtn").addEventListener("click", act(() => { state.clue = !state.clue; store.set("clue", state.clue); setToggle($("clueBtn"), state.clue);
@@ -701,8 +957,12 @@ $("clearBtn").addEventListener("click", act(() => {
   if (busy) return;
   letters = letters.map((L, i) => locked.has(i) ? L : "");
   revealed = new Set();
+  kbSync(-1);
   render();
 }));
+$("undoBtn").addEventListener("click", act(() => undo()));
+$("smartBtn").addEventListener("click", act(() => { state.smart = !state.smart; store.set("smart", state.smart); setToggle($("smartBtn"), state.smart); render(); }));
+$("unscrBtn").addEventListener("click", act(() => { if (busy) return; unscramble(); }));
 $("lockBtn").addEventListener("click", act(() => { if (busy) return; setLock(!lockOn); render(); }));
 $("revealBtn").addEventListener("click", act(() => {
   if (busy || !target) return;
@@ -721,6 +981,7 @@ $("newBtn").addEventListener("click", act(() => {
   letters = letters.map((L, i) => locked.has(i) ? L : "");
   revealed = new Set();
   pickTarget();
+  kbSync(-1);
   if (!finished && !state.show) skipNote = `Last word was ${was.w}`;
   render();
 }));
@@ -729,12 +990,64 @@ setToggle($("showBtn"), state.show);
 setToggle($("clueBtn"), state.clue);
 setToggle($("advBtn"), state.adv);
 setToggle($("scramBtn"), state.scram);
+setToggle($("smartBtn"), state.smart);
 if (!Array.isArray(state.pattern) || state.pattern.length !== 12) state.pattern = Array(12).fill("");
+// ---- pull down from the top to refresh, only when opened from the home screen
+// (Safari and Chrome tabs already have their own pull-to-refresh) ----
+function isHomeScreenApp() {
+  try { return navigator.standalone === true || matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches; }
+  catch { return false; }
+}
+function setupPullToRefresh(force) {
+  if (!force && !isHomeScreenApp()) return;
+  const el = $("ptr"), txt = $("ptrText");
+  const PULL = 80;                       // finger travel needed to refresh
+  let y0 = null, dy = 0, pulling = false;
+  const show = d => {
+    const p = Math.min(d, PULL * 1.5);
+    el.style.transform = `translate(-50%, ${p - 60}px)`;
+    el.style.opacity = Math.min(1, d / 40);
+    el.classList.toggle("ready", d >= PULL);
+    txt.textContent = d >= PULL ? "Release to refresh" : "Pull to refresh";
+  };
+  const reset = () => { el.style.transition = "transform .2s, opacity .2s"; el.style.transform = ""; el.style.opacity = ""; el.classList.remove("ready"); setTimeout(() => el.style.transition = "", 220); };
+  document.addEventListener("touchstart", e => {
+    y0 = null; pulling = false; dy = 0;
+    if (e.touches.length !== 1 || window.scrollY > 0 || !$("help").hidden) return;
+    // don't hijack drags inside lists that scroll on their own, or on dropdowns
+    const t = e.target;
+    if (t.closest && t.closest("select, input, .clues, .helpbody")) return;
+    y0 = e.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener("touchmove", e => {
+    if (y0 === null) return;
+    dy = e.touches[0].clientY - y0;
+    if (dy <= 0 || window.scrollY > 0) { if (pulling) { pulling = false; reset(); } return; }
+    pulling = true;
+    e.preventDefault();                  // stop the page bouncing while we pull
+    show(dy * 0.6);
+  }, { passive: false });
+  const end = () => {
+    if (!pulling) { y0 = null; return; }
+    const go = dy * 0.6 >= PULL;
+    pulling = false; y0 = null;
+    if (go) {
+      el.classList.remove("ready"); el.classList.add("go");
+      txt.textContent = "Refreshing…"; el.querySelector(".arrow").textContent = "↻";
+      el.style.transform = "translate(-50%, 20px)"; el.style.opacity = 1;
+      setTimeout(() => location.reload(), 150);
+    } else reset();
+  };
+  document.addEventListener("touchend", end);
+  document.addEventListener("touchcancel", end);
+}
+setupPullToRefresh(/[?&]ptr=1/.test(location.search));
+
 buildPattern();
 renderPattern();
+buildKb();
 fillLengths();
 fullReset();
 </script>
 
-</body>
-</html>
+</body></html>
